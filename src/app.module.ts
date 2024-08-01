@@ -5,6 +5,10 @@ import { ExceptionModule } from "./exception/exception.module";
 import { FileModule } from "./modules/file/file.module";
 import { CronModule } from "./modules/cron/cron.module";
 import { ScheduleModule } from "@nestjs/schedule";
+import { AWSModule } from "./modules/aws/aws.module";
+import { WorkspaceModule } from "./modules/workspace/workspace.module";
+import { DataSourceModule } from "./modules/data-source/data-source.module";
+import { SearchModule } from "./modules/search/search.module";
 
 @Module({
   imports: [
@@ -13,7 +17,11 @@ import { ScheduleModule } from "@nestjs/schedule";
     ExceptionModule,
     ScheduleModule.forRoot(),
     CronModule,
+    AWSModule,
+    WorkspaceModule,
     FileModule,
+    DataSourceModule,
+    SearchModule,
   ],
   controllers: [],
   providers: [],

@@ -1,74 +1,79 @@
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  ListObjectsCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, ListObjectsCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { DownloadFileQuery } from "./dto/download-file-query";
+import { DownloadFileParam } from "./dto/download-file-query";
 import { Response } from "express";
 import { DeleteFileBody } from "./dto/delete-file-body.dto";
+import { AWSService } from "../aws/aws.service";
+import { UploadFileBody } from "./dto/upload-file-body.dto";
+import { parse } from "path";
 
 @Injectable()
 export class FileService {
-  private clientS3 = new S3Client();
   private bucket;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private awsService: AWSService,
+  ) {
     this.bucket = this.configService.get("AWS_S3_BUCKET");
   }
 
-  async uploadFile(file: Express.Multer.File) {
-    await this.clientS3.send(
+  async upload(body: UploadFileBody, file: Express.Multer.File) {
+    file.originalname = Buffer.from(file.originalname, "latin1").toString("utf8");
+    const parsedName = parse(file.originalname);
+    const keyName = `${parsedName.name}-${new Date().getTime()}${parsedName.ext}`;
+
+    await this.awsService.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Body: file.buffer,
-        Key: `demo1/${file.originalname}`,
+        Key: `sta-workspace-1/${keyName}`,
       }),
     );
   }
 
-  async listFiles() {
-    const data = await this.clientS3.send(
+  async list() {
+    const data = await this.awsService.s3Client.send(
       new ListObjectsCommand({
         Bucket: this.bucket,
-        Prefix: "demo1/",
+        Prefix: "sta-workspace-1/",
       }),
     );
 
-    return data.Contents!.map((obj) => ({
-      path: obj.Key,
-      filename: obj.Key!.slice("demo1/".length),
+    data.Contents ??= [];
+
+    return data.Contents.map((obj) => ({
+      key: obj.Key,
+      filename: obj.Key!.slice("sta-workspace-1/".length),
       size: obj.Size!,
       lastModified: obj.LastModified!,
     }));
   }
 
-  async downloadFile(res: Response, query: DownloadFileQuery) {
+  async download(res: Response, params: DownloadFileParam) {
     // TODO: validate auth
 
-    const data = await this.clientS3.send(
+    const data = await this.awsService.s3Client.send(
       new GetObjectCommand({
         Bucket: this.bucket,
-        Key: query.path,
+        Key: params.key,
       }),
     );
 
-    res.setHeader("Content-Deposition", data.ContentDisposition!);
-    res.setHeader("Content-Type", data.ContentType!);
+    if (data.ContentDisposition) res.setHeader("Content-Deposition", data.ContentDisposition);
+    if (data.ContentType) res.setHeader("Content-Type", data.ContentType);
     //@ts-ignore
     data.Body?.pipe(res);
   }
 
-  async deleteFile(body: DeleteFileBody) {
+  async delete(body: DeleteFileBody) {
     // TODO: validate auth
 
-    await this.clientS3.send(
+    await this.awsService.s3Client.send(
       new DeleteObjectCommand({
         Bucket: this.bucket,
-        Key: body.path,
+        Key: body.key,
       }),
     );
   }

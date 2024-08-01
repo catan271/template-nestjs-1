@@ -8,11 +8,13 @@ import { HttpExceptionFilter } from "./exception/filters/HttpException.filter";
 import { UnauthorizedExceptionFilter } from "./exception/filters/UnauthorizedException.filter";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { validationExceptionFactory } from "./exception/factories/validation-exception.factory";
+import "./utils/concurrent.util";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix("api");
+  app.enableCors();
 
   app.useGlobalInterceptors(new TransformInterceptor());
 
@@ -42,6 +44,7 @@ async function bootstrap() {
     {
       swaggerOptions: {
         persistAuthorization: true,
+        docExpansion: "none",
       },
     },
   );
